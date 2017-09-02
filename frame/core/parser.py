@@ -11,10 +11,6 @@
 @time: 17/8/28 17:35
 @desc:
 '''
-import types
-
-from frame.http.request import Request
-from frame.http.response import Response
 
 class Parser(object):
     '''parse Response Object'''

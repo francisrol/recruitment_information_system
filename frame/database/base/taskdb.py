@@ -19,7 +19,7 @@ class TaskDB(object):
     FAILED = 4  # 解析失败，待重试
     BAD = 5  # 无效请求
 
-    QUEUE = 9 # 正在队列中处理
+    INQUEUE = 9 # 正在队列中处理
 
     flags = set()
 
@@ -51,6 +51,7 @@ class TaskDB(object):
             2: 'SUCCESS',
             3: 'FAILED',
             4: 'BAD',
+            9: "INQUEUE",
         }.get(status, 'UNKNOWN')
 
     @staticmethod
@@ -60,6 +61,7 @@ class TaskDB(object):
             'SUCCESS': 2,
             'FAILED': 3,
             'BAD': 4,
+            'INQUEUE': 5,
         }.get(status, 4)
 
     def copy(self):

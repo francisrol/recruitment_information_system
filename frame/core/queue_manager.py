@@ -11,7 +11,7 @@
 @time: 17/8/28 17:35
 @desc:
 '''
-from frame.database.redis.taskdb import TaskDB
+
 from frame.task_queue.redis_queue import Queue
 
 class QueueManager(object):

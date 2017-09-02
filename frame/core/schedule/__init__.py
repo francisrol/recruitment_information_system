@@ -17,7 +17,6 @@ import importlib
 from frame.core.fetcher import Fetcher
 from frame.core.parser import Parser
 from frame.http.request import Request
-
 from settings import SPIDERS
 
 

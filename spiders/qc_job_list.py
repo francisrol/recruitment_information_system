@@ -13,11 +13,10 @@
 '''
 
 import urllib
-
-from frame.http.request import Request
 from lxml import etree
 
-from recruitment_information_system.settings import CITY, KEYWORDS
+from frame.http.request import Request
+from settings import CITY, KEYWORDS
 
 
 class Spider(object):
@@ -89,6 +88,7 @@ class Spider(object):
     }
 
     def start_requests(self):
+        '''初始请求'''
         # 请求参数
         qcgw_params = {
             "location":"010000",
@@ -106,26 +106,13 @@ class Spider(object):
                 # 组成url
                 url = origin_url.format(location=qcgw_params["location"], pub_date=qcgw_params["pub_date"], keyword=qcgw_params["keyword"], workyear=qcgw_params["workyear"])
                 print(url)
-                yield Request(url, headers=self.headers, parse="parse_list", validate="validate")
-                # 发起请求，并解析数据
-                # response = requests.get(url, headers=self.headers)
-                # return response
-            # html = etree.HTML(response.content)
-            # count = html.xpath('//div[@class="rt"][1]/text()')
-            # count = count[0].strip()
-            # return int(count[1:-3])
+                yield Request(url, headers=self.headers, parse="parse_list")
 
     def parse_list(self, response):
-        # yield Request()
         html = etree.HTML(response.content)
         count = html.xpath('//div[@class="rt"][1]/text()')
         count = count[0].strip()
         return int(count[1:-3])
-
-    def validate(self, result):
-        return True
-
-
 
 if __name__ == '__main__':
     pass

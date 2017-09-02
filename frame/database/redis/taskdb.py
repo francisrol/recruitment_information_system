@@ -17,7 +17,6 @@ import json
 import logging
 import time
 import six
-import pickle
 import redis
 
 from frame.database.base.taskdb import TaskDB as BaseTaskDB
@@ -37,12 +36,15 @@ class TaskDB(BaseTaskDB):
             self.scan_available = False
 
     def _gen_key(self, flag, spider, taskid):
+        '''gen task key'''
         return "%s%s_%s_%s" % (self.__prefix__, flag, spider, taskid)
 
     def _gen_status_key(self, flag, spider, status):
+        '''gen status key'''
         return '%s%s_%s_status_%d' % (self.__prefix__, flag, spider, status)
 
     def _parse(self, data):
+        ''''''
         if six.PY3:
             result = {}
             for key, value in data.items():
@@ -59,14 +61,12 @@ class TaskDB(BaseTaskDB):
                     data[each] = {}
         if 'status' in data:
             data['status'] = int(data['status'])
-        if 'lastcrawltime' in data:
-            data['lastcrawltime'] = float(data['lastcrawltime'] or 0)
         if 'updatetime' in data:
             data['updatetime'] = float(data['updatetime'] or 0)
         return data
 
     def _stringify(self, data):
-        for each in ("request", "response", "result"):
+        for each in ("request", "response", "parseresult"):
             if each in data:
                 data[each] = json.dumps(data[each])
         return data
@@ -77,6 +77,7 @@ class TaskDB(BaseTaskDB):
         return self._flags
 
     def load_tasks(self, status, spider, flag=None, keys=None):
+        '''load task with change status'''
         if flag is None:
             flag = self.flags
         elif not isinstance(flag, list):
@@ -108,6 +109,7 @@ class TaskDB(BaseTaskDB):
                     yield self._parse(obj)
 
     def load_tasks_to_queue(self, status, spider, flag=None, keys=None):
+        '''load task and change status'''
         if flag is None:
             flag = self.flags
         elif not isinstance(flag, list):
@@ -143,6 +145,7 @@ class TaskDB(BaseTaskDB):
                     pipe.execute()
 
     def get_task(self, flag, spider, taskid, fields=None):
+        '''get a task'''
         if fields:
             obj = self.redis.hmget(self._gen_key(flag, spider, taskid), fields)
             if all(x is None for x in obj):
@@ -156,9 +159,7 @@ class TaskDB(BaseTaskDB):
         return self._parse(obj)
 
     def status_count(self, flag, spider):
-        '''
-        return a dict
-        '''
+        '''return a dict'''
         pipe = self.redis.pipeline(transaction=False)
         for status in range(1, 6):
             pipe.scard(self._gen_status_key(flag, spider, status))
@@ -171,6 +172,7 @@ class TaskDB(BaseTaskDB):
         return result
 
     def insert(self, task):
+        '''insert task'''
         taskid = task["taskid"]
         flag = task["flag"]
         spider = task["spider"]
@@ -190,6 +192,7 @@ class TaskDB(BaseTaskDB):
         pipe.execute()
 
     def update(self, task):
+        '''update task'''
         taskid = task["taskid"]
         flag = task["flag"]
         spider = task["spider"]
@@ -207,6 +210,7 @@ class TaskDB(BaseTaskDB):
         pipe.execute()
 
     def drop(self, flag):
+        '''drop all task information about this flag'''
         self.redis.srem(self.__prefix__ + 'flags', flag)
 
         if self.scan_available:

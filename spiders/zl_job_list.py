@@ -12,8 +12,11 @@
 @desc:
 '''
 
-import requests
+import urllib
 from lxml import etree
+
+from frame.http.request import Request
+from settings import CITY, KEYWORDS
 
 
 class Spider(object):
@@ -118,7 +121,6 @@ class Spider(object):
             return self.get_list_response(city, keywords)
         else:
             return response
-
 
     def get_total_num(self, *args, **kwargs):
         response = self.get_list_response(*args, **kwargs)
