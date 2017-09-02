@@ -106,9 +106,9 @@ class Spider(object):
                 qcgw_params['location'] = self.city_code[city]
                 qcgw_params['keyword'] = urllib.quote(keyword.encode("utf-8"))
                 # url模板
-                origin_url = u'http://search.51job.com/list/{location},000000,0000,00,{pub_date},99,{keyword},2,{page}.html?lang=c&stype=1&postchannel=0000&workyear={workyear}&cotype=99&degreefrom=99&jobterm=99&companysize=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=5&dibiaoid=0&address=&line=&specialarea=00&from=&welfare='
+                origin_url = u'http://search.51job.com/list/{location},000000,0000,00,{pub_date},99,{keyword},2,1.html?lang=c&stype=1&postchannel=0000&workyear={workyear}&cotype=99&degreefrom=99&jobterm=99&companysize=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=5&dibiaoid=0&address=&line=&specialarea=00&from=&welfare='
                 # 组成url
-                url = origin_url.format(location=qcgw_params["location"], pub_date=qcgw_params["pub_date"], keyword=qcgw_params["keyword"], page = self.params["page"] ,workyear=qcgw_params["workyear"])
+                url = origin_url.format(location=qcgw_params["location"], pub_date=qcgw_params["pub_date"], keyword=qcgw_params["keyword"], workyear=qcgw_params["workyear"])
                 #yield Request(url, headers=self.headers, parser="parse_list")
                 yield Request(url, headers=self.headers, parse="parse_list")
 
@@ -119,7 +119,7 @@ class Spider(object):
         # parse detail page links
         detail_links = html.xpath('//*[@id="resultList"]/div/p/span/a/@href')
         for link in detail_links:
-            yield Request(link, headers=self.headers, parser="parse_detail")
+            yield Request(link, headers=self.headers, parse="parse_detail")
 
         # parse next page link
         next_link = html.xpath("//li[@class='bk'][2]/a/@href")
@@ -131,149 +131,43 @@ class Spider(object):
         html = etree.HTML(response.content)
         # 招聘岗位
         position = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/h1/text()')
+        position = self.filter(position)
         # 公司名称
         company = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[1]/a/text()')
+        company = self.filter(company)
         # 职位月薪
-        try:
-            salary = html.xpath("/html/body/div[2]/div[2]/div[2]/div/div[1]/strong/text()")
-
-            # print salary
-            #找到万
-            salary_index1 = salary.find('万')
-            #找到千
-            salary_index2 = salary.find('千')
-            global salary_min
-            global salary_max
-
-            if salary_index1 != -1:
-                salary_list = salary[:salary_index1].split('-')
-                salary_min = int(float(salary_list[0])*10000)
-                salary_max = int(float(salary_list[1])*10000)
-                # print salary_min
-                # print salary_max
-
-            if salary_index2 != -1:
-                salary_list = salary[:salary_index2].split('-')
-                salary_min = int(float(salary_list[0]) * 1000)
-                salary_max = int(float(salary_list[1]) * 1000)
-                # print salary_min
-                # print salary_max
-
-        except:
-            salary = "面议"
+        salary = html.xpath("/html/body/div[2]/div[2]/div[2]/div/div[1]/strong/text()")
+        salary = Item.filter_salary(salary)
         # 工作地点
         # workposition = html.xpath("//div[@class = 'bmsg inbox']/p/text()")[0].strip()
-        try:
-            workposition = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
-        except:
-            workposition = None
+        workposition = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
+        workposition = self.filterfirst(workposition)
         # 工作经验   最低学历 招聘人数 发布时间 英语 专业
-        try:
-            re = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
-        except:
-            re = None
-        res = "".join(re).strip()
-        print "信息：", res
-        # 找工作经验
-        index = res.find("经验")
-        # 找本科
-        index1 = res.find("科")
-        #找大专
-        index11 = res.find("专")
-        # 找硕士或是博士
-        index2 = res.find("士")
-        # 找招聘人数
-        index3 = res.find("聘")
-        # 找发布时间
-        index4 = res.find("发布")
-
-        #工作经验
-        if index != -1:
-            workbackground = res[:index ]
-            print "workbackground--", workbackground
-        else:
-            workbackground = None
-            print "workbackground--", workbackground
-
-        #专科或是本科  硕士或是博士
-        if index1 != -1:
-            education = res[index1 - 1:index1 + 1]
-            print "education--",education
-        elif index2 != -1:
-            education = res[index2 - 1:index2 + 1]
-            print "education++",education
-        elif index11 != -1:
-            education = res[index11 - 1:index11 + 1]
-            print "education11", education
-        else:
-            education = None
-            print "education==",education
-
-        #招聘人数
-        if index3 != -1:
-            if res.find("若干") != -1:
-                number = 1
-                print "number--", number
-            else:
-                number = res[index3 + 1:index3 + 2]
-                print "number++", number
-        else:
-            number = None
-            print "number==", number
-
-        #发布时间
-        if index4 != -1:
-            releasedata = res[index4 - 5:index4]
-            print "releasedata--",releasedata
-        else:
-            releasedata = None
-            print "releasedata++",releasedata
-
+        re = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
+        workbackground, education, number, releasedata = self.dealresp(re)
         # 工作性质
         worknature = None
         # 职位类别
-        try:
-            positioncategory = html.xpath("//div[@class = 'mt10']/p/span[@class = 'el']/text()")
-        except:
-            positioncategory = None
+        positioncategory = html.xpath("//div[@class = 'mt10']/p/span[@class = 'el']/text()")
+        positioncategory = self.dealerror(positioncategory)
         # 任职要求
         try:
             jobrequirements = html.xpath('/html/body/div[2]/div[2]/div[3]/div[4]/div/text()')
         except:
-            jobrequirements = None
-
+            jobrequirements = "无"
         jobrequirements_str = ''.join(jobrequirements).strip()
 
         # 工作地址
-        try:
-            jobaddress = workposition
-        except:
-            jobaddress = None
+        jobaddress = workposition
         # print "+++++++++++++++",jobaddress
 
         # 公司信息
-        try:
-            info = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[2]/text()')[0].strip()
-
-            info_list = info.split('|')
-
-            # 公司性质
-            companynature = info_list[0].strip()
-
-            # 公司规模
-            companysize = info_list[1].strip()
-        except:
-            companynature = None
-            companysize = None
-
+        info = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[2]/text()')[0].strip()
+        companynature, companysize,companyindustry = self.dealinfo(info)
         # 公司行业
-        try:
-            companyindustry = info_list[2].strip()
-        except:
-            companyindustry = None
 
         try:
-            item = Item(position, company, number, salary_min, salary_max)
+            item = Item(Spider.name, position, company, number, salary)
             result = item.data
             print result
 
@@ -284,6 +178,99 @@ class Spider(object):
 
     def filter(self, temp, replace=None):
         return temp[0].strip() if temp else replace
+
+    def filterfirst(self, temp, replace=None):
+        return temp[1].strip() if temp else replace
+
+    def dealerror(self, temp, replace=None):
+        if temp:
+            return temp
+        else:
+            return replace
+
+    def dealresp(self, temp, replace = None):
+        if len(temp):
+            res = "".join(temp).strip()
+            print "信息：", res
+            # 找工作经验
+            index = res.find("经验")
+            # 找本科
+            index1 = res.find("科")
+            # 找大专
+            index11 = res.find("专")
+            # 找硕士或是博士
+            index2 = res.find("士")
+            # 找招聘人数
+            index3 = res.find("聘")
+            # 找发布时间
+            index4 = res.find("发布")
+
+            # 工作经验
+            if index != -1:
+                workbackground = res[:index]
+                # print "workbackground--", workbackground
+            else:
+                workbackground = None
+                # print "workbackground--", workbackground
+
+            # 专科或是本科  硕士或是博士
+            if index1 != -1:
+                education = res[index1 - 1:index1 + 1]
+                # print "education--", education
+            elif index2 != -1:
+                education = res[index2 - 1:index2 + 1]
+                # print "education++", education
+            elif index11 != -1:
+                education = res[index11 - 1:index11 + 1]
+                # print "education11", education
+            else:
+                education = None
+                # print "education==", education
+
+            # 招聘人数
+            if index3 != -1:
+                if res.find("若干") != -1:
+                    number = 1
+                    # print "number--", number
+                else:
+                    number = res[index3 + 1:index3 + 2]
+                    # print "number++", number
+            else:
+                number = None
+                # print "number==", number
+
+            # 发布时间
+            if index4 != -1:
+                releasedata = res[index4 - 5:index4]
+                # print "releasedata--", releasedata
+            else:
+                releasedata = None
+                # print "releasedata++", releasedata
+        else:
+            return replace
+
+        return workbackground, education, number, releasedata
+
+    def dealinfo(self, info, replace = None):
+        if len(info):
+            info_list = info.split('|')
+
+            # 公司性质
+            companynature = info_list[0].strip()
+
+            # 公司规模
+            companysize = info_list[1].strip()
+
+            companyindustry = info_list[2].strip()
+
+        else:
+            companynature = None
+            companysize = None
+            companyindustry = None
+            return companynature,companysize,companyindustry
+        return companynature, companysize,companyindustry
+
+
 
 if __name__ == '__main__':
     pass

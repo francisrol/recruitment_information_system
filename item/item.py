@@ -42,7 +42,7 @@ companyaddress  公司地址
 
 class Item(object):
     def __init__(
-            self, spider, position, company, number, salary,
+            self, spider = None, position = None, company = None, number = None, salary = None,
             releasedata = None,worknature = None, workbackground = None, education = None,
             positioncategory = None,jobrequirements = None,  jobaddress = None, companysize = None,
             companynature = None,companyindustry = None, companyhome = None, companyaddress = None
@@ -72,7 +72,7 @@ class Item(object):
         item["company"] = self._company if self._company else "NULL"
         item["number"] = self._number if self._number else "NULL"
         # item["salary"] = salary if salary else "NULL"
-        item["salary_min"], item["salary_max"] = self.filter_salary()
+        item["salary_min"], item["salary_max"] = self.filter_salary(self._salary)
         # item["workposition"] = workposition if workposition else "NULL"
         item["releasedata"] = self._releasedata if self._releasedata else "NULL"
         item["worknature"] = self._worknature if self._worknature else "NULL"
@@ -96,31 +96,56 @@ class Item(object):
         return self._gen_item()
 
 
-    def filter_salary(self):
+    def filter_salary(self, salary):
         salary_min = 0
         salary_max = 0
         if self._spider == "qc_job":
-            salary_index1 = self._salary.find('万')
-            # 找到千
-            salary_index2 = self._salary.find('千')
+            if len(salary):
+                # 找到万
+                salary_index1 = self._salary.find('万')
+                # 找到千
+                salary_index2 = self._salary.find('千')
+                # 找到天
+                salary_index3 = self._salary.find('天')
+                # 找到年
+                salary_index4 = self._salary.find('年')
 
-            if salary_index1 != -1:
-                salary_list = self._salary[:salary_index1].split('-')
-                salary_min = int(float(salary_list[0]) * 10000)
-                salary_max = int(float(salary_list[1]) * 10000)
-                # print salary_min
-                # print salary_max
+                if salary_index1 != -1:
+                    salary_list = self._salary[:salary_index1].split('-')
+                    salary_min = int(float(salary_list[0]) * 10000)
+                    salary_max = int(float(salary_list[1]) * 10000)
+                    # print salary_min
+                    # print salary_max
 
-            if salary_index2 != -1:
-                salary_list = self._salary[:salary_index2].split('-')
-                salary_min = int(float(salary_list[0]) * 1000)
-                salary_max = int(float(salary_list[1]) * 1000)
+                if salary_index2 != -1:
+                    salary_list = self._salary[:salary_index2].split('-')
+                    salary_min = int(float(salary_list[0]) * 1000)
+                    salary_max = int(float(salary_list[1]) * 1000)
+
+                if salary_index3 != -1:
+                    salary_str = self._salary[:salary_index3-4]
+                    salary_min = int(salary_str)*22
+                    salary_max = salary_min
+
+                if salary_index4 != -1:
+                    salary_str = self._salary[:salary_index4-1]
+                    salary_min = salary_str
+                    salary_max = salary_min
+
+            else:
+                salary_min = 0
+                salary_max = 0
 
 
         elif self._spider == "zl_job":
             pass
 
         return salary_min, salary_max
+
+
+
+
+
 
 
 
