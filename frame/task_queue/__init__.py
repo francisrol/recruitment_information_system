@@ -8,6 +8,11 @@
 @contact: ryomawithlst@sina.com
 @software: PyCharm
 @file: __init__.py.py
-@time: 17/8/25 21:16
+@time: 17/8/28 15:35
 @desc:
 '''
+from .redis_queue import Queue
+
+InQueue = Queue
+OutQueue = Queue
+

@@ -15,6 +15,8 @@
 import requests
 import urllib
 from lxml import etree
+from item.item import *
+
 
 from http.request import Request
 from init.settings import CITY, KEYWORDS
@@ -87,6 +89,8 @@ class Spider(object):
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36",
     }
 
+
+    #发送requests请求
     def start_requests(self):
         # 请求参数
         qcgw_params = {
@@ -94,6 +98,7 @@ class Spider(object):
             "pub_date": "2",
             "keyword": "python",
             "workyear": "99",
+            "page": "1"  #add
         }
         for city in CITY:
             for keyword in KEYWORDS:
@@ -101,26 +106,213 @@ class Spider(object):
                 qcgw_params['location'] = self.city_code[city]
                 qcgw_params['keyword'] = urllib.quote(keyword.encode("utf-8"))
                 # url模板
-                origin_url = u'http://search.51job.com/list/{location},000000,0000,00,{pub_date},99,{keyword},2,1.html?lang=c&stype=1&postchannel=0000&workyear={workyear}&cotype=99&degreefrom=99&jobterm=99&companysize=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=5&dibiaoid=0&address=&line=&specialarea=00&from=&welfare='
+                origin_url = u'http://search.51job.com/list/{location},000000,0000,00,{pub_date},99,{keyword},2,{page}.html?lang=c&stype=1&postchannel=0000&workyear={workyear}&cotype=99&degreefrom=99&jobterm=99&companysize=99&lonlat=0%2C0&radius=-1&ord_field=0&confirmdate=9&fromType=5&dibiaoid=0&address=&line=&specialarea=00&from=&welfare='
                 # 组成url
-                url = origin_url.format(location=qcgw_params["location"], pub_date=qcgw_params["pub_date"], keyword=qcgw_params["keyword"], workyear=qcgw_params["workyear"])
-                print(url)
-                yield Request(url, headers=self.headers, parser="parse_list")
-                # 发起请求，并解析数据
-                # response = requests.get(url, headers=self.headers)
-                # return response
-            # html = etree.HTML(response.content)
-            # count = html.xpath('//div[@class="rt"][1]/text()')
-            # count = count[0].strip()
-            # return int(count[1:-3])
+                url = origin_url.format(location=qcgw_params["location"], pub_date=qcgw_params["pub_date"], keyword=qcgw_params["keyword"], page = self.params["page"] ,workyear=qcgw_params["workyear"])
+                #yield Request(url, headers=self.headers, parser="parse_list")
+                yield Request(url, headers=self.headers, parse="parse_list")
 
+    #解析当前页中的列表链接a[href]
     def parse_list(self, response):
-        # yield Request()
-        html = etree.HTML(response.content)
-        count = html.xpath('//div[@class="rt"][1]/text()')
-        count = count[0].strip()
-        return int(count[1:-3])
 
+        html = etree.HTML(response.content)
+        # parse detail page links
+        detail_links = html.xpath('//*[@id="resultList"]/div/p/span/a/@href')
+        for link in detail_links:
+            yield Request(link, headers=self.headers, parser="parse_detail")
+
+        # parse next page link
+        next_link = html.xpath("//li[@class='bk'][2]/a/@href")
+        if next_link:
+            yield Request(next_link[0], headers=self.headers, parse="parse_list")
+
+    #解析详情页信息
+    def parse_detail(self, response):
+        html = etree.HTML(response.content)
+        # 招聘岗位
+        position = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/h1/text()')
+        # 公司名称
+        company = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[1]/a/text()')
+        # 职位月薪
+        try:
+            salary = html.xpath("/html/body/div[2]/div[2]/div[2]/div/div[1]/strong/text()")
+
+            # print salary
+            #找到万
+            salary_index1 = salary.find('万')
+            #找到千
+            salary_index2 = salary.find('千')
+            global salary_min
+            global salary_max
+
+            if salary_index1 != -1:
+                salary_list = salary[:salary_index1].split('-')
+                salary_min = int(float(salary_list[0])*10000)
+                salary_max = int(float(salary_list[1])*10000)
+                # print salary_min
+                # print salary_max
+
+            if salary_index2 != -1:
+                salary_list = salary[:salary_index2].split('-')
+                salary_min = int(float(salary_list[0]) * 1000)
+                salary_max = int(float(salary_list[1]) * 1000)
+                # print salary_min
+                # print salary_max
+
+        except:
+            salary = "面议"
+        # 工作地点
+        # workposition = html.xpath("//div[@class = 'bmsg inbox']/p/text()")[0].strip()
+        try:
+            workposition = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
+        except:
+            workposition = None
+        # 工作经验   最低学历 招聘人数 发布时间 英语 专业
+        try:
+            re = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
+        except:
+            re = None
+        res = "".join(re).strip()
+        print "信息：", res
+        # 找工作经验
+        index = res.find("经验")
+        # 找本科
+        index1 = res.find("科")
+        #找大专
+        index11 = res.find("专")
+        # 找硕士或是博士
+        index2 = res.find("士")
+        # 找招聘人数
+        index3 = res.find("聘")
+        # 找发布时间
+        index4 = res.find("发布")
+
+        #工作经验
+        if index != -1:
+            workbackground = res[:index ]
+            print "workbackground--", workbackground
+        else:
+            workbackground = None
+            print "workbackground--", workbackground
+
+        #专科或是本科  硕士或是博士
+        if index1 != -1:
+            education = res[index1 - 1:index1 + 1]
+            print "education--",education
+        elif index2 != -1:
+            education = res[index2 - 1:index2 + 1]
+            print "education++",education
+        elif index11 != -1:
+            education = res[index11 - 1:index11 + 1]
+            print "education11", education
+        else:
+            education = None
+            print "education==",education
+
+        #招聘人数
+        if index3 != -1:
+            if res.find("若干") != -1:
+                number = 1
+                print "number--", number
+            else:
+                number = res[index3 + 1:index3 + 2]
+                print "number++", number
+        else:
+            number = None
+            print "number==", number
+
+        #发布时间
+        if index4 != -1:
+            releasedata = res[index4 - 5:index4]
+            print "releasedata--",releasedata
+        else:
+            releasedata = None
+            print "releasedata++",releasedata
+
+        # 工作性质
+        worknature = None
+        # 职位类别
+        try:
+            positioncategory = html.xpath("//div[@class = 'mt10']/p/span[@class = 'el']/text()")
+        except:
+            positioncategory = None
+        # 任职要求
+        try:
+            jobrequirements = html.xpath('/html/body/div[2]/div[2]/div[3]/div[4]/div/text()')
+        except:
+            jobrequirements = None
+
+        jobrequirements_str = ''.join(jobrequirements).strip()
+
+        # 工作地址
+        try:
+            jobaddress = workposition
+        except:
+            jobaddress = None
+        # print "+++++++++++++++",jobaddress
+
+        # 公司信息
+        try:
+            info = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[2]/text()')[0].strip()
+
+            info_list = info.split('|')
+
+            # 公司性质
+            companynature = info_list[0].strip()
+
+            # 公司规模
+            companysize = info_list[1].strip()
+        except:
+            companynature = None
+            companysize = None
+
+        # 公司行业
+        try:
+            companyindustry = info_list[2].strip()
+        except:
+            companyindustry = None
+
+        try:
+            # item = {}
+            # item["position"] = position if position else "NULL"
+            # item["company"] = company if company else "NULL"
+            # # item["salary"] = salary if salary else "NULL"
+            # item["salary_min"] = salary_min if salary_min else "NULL"
+            # item["salary_max"] = salary_max if salary_max else "NULL"
+            # item["workposition"] = workposition if workposition else "NULL"
+            # item["releasedata"] = releasedata if releasedata else "NULL"
+            # item["worknature"] = worknature if worknature else "NULL"
+            # item["workbackground"] = workbackground if workbackground else "NULL"
+            # item["education"] = education if education else "NULL"
+            # item["number"] = number if number else "NULL"
+            # item["positioncategory"] = positioncategory if positioncategory else "NULL"
+            # item["jobrequirements"] = jobrequirements_str if jobrequirements_str else "NULL"
+            # item["jobaddress"] = jobaddress if jobaddress else "NULL"
+            # item["companysize"] = companysize if companysize else "NULL"
+            # item["companynature"] = companynature if companynature else "NULL"
+            # item["companyindustry"] = companyindustry if companyindustry else "NULL"
+
+            # print item
+            # print type(item)
+
+            # with open("QC.json", "wa") as f:
+            #     f.write(str(item))
+                # f.write(item)
+
+            # 存入Mongo数据库
+            # db = mongo.MongodbHandeler()
+            # db.process_item(item)
+            item = Item(position, company, number, salary_min, salary_max)
+            result = item.data
+            print result
+
+        except Exception, e:
+            print "[ERR]: 前程数据提取失败....",
+            print e
+            raise
+
+    def filter(self, temp, replace=None):
+        return temp[0].strip() if temp else replace
 
 if __name__ == '__main__':
     pass

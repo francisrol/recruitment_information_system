@@ -7,7 +7,17 @@
 @license: (C) Copyright 2017
 @contact: ryomawithlst@sina.com
 @software: PyCharm
-@file: __init__.py.py
-@time: 17/8/25 21:16
+@file: response.py
+@time: 17/8/26 16:39
 @desc:
 '''
+
+from requests.models import Response as BaseResponse
+
+Response = BaseResponse
+
+
+
+
+
+
