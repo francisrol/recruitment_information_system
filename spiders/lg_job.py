@@ -18,7 +18,7 @@ from datetime import datetime
 import jsonpath
 import requests
 
-from .config import *
+from settings import CITY, KEYWORDS
 
 
 class Spider(object):
@@ -37,10 +37,10 @@ class Spider(object):
 
     name = 'lg_job'
 
-    def __init__(self, db):
+    def __init__(self):
         self.headers = {
             "Accept":"application/json, text/javascript, */*; q=0.01",
-            # "Accept-Encoding":"gzip, deflate, br",
+            #"Accept-Encoding":"gzip, deflate, br",
             "Accept-Language":"zh-CN,zh;q=0.8",
             "Cache-Control":"no-cache",
             "Connection":"keep-alive",
@@ -56,7 +56,6 @@ class Spider(object):
             "X-Anit-Forge-Token":"None",
             "X-Requested-With":"XMLHttpRequest",
         }
-        self.db = db
 
     def get_list_response(self, city, keywords, page):
         '''
