@@ -43,6 +43,7 @@ class Parser(object):
                 self.handle_result(task, result)
             except Exception as e:
                 print(e)
+                taskqueue.put(task)
 
 
 
