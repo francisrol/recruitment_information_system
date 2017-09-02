@@ -12,12 +12,14 @@
 @desc:
 '''
 
+import urllib
 import requests
 from lxml import etree
+
 # from database.mongodb import resultdb
 from item.item import *
 from frame.http.request import Request
-
+from settings import CITY, KEYWORDS
 
 class Spider(object):
     '''
@@ -80,7 +82,7 @@ class Spider(object):
         "isadv": "1"
     }
 
-    def __init__(self, db, city=None, keywords=None):
+    def __init__(self, db):
         self.header = {
             "Accept":"text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
             # "Accept-Encoding":"gzip, deflate",
@@ -95,25 +97,31 @@ class Spider(object):
             "User-Agent":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36",
         }
         self.db = db
-
-        #add
         self.baseURL = "http://sou.zhaopin.com/jobs/searchresult.ashx"
 
+    #发送requests请求
+    def start_requests(self):
+        #add
+
         # 请求参数  add
-        self.params = {
-            "pd": "7",  # 发布时间
-            "jl": "北京",  # 地区
-            "kw": "python",  # 搜索条件
-            "sm": "0",
-            "p": "1",
-            "sf": "0",
-            "st": "99999",
-            "isadv": "1"
-        }
-        self.params['pd'] = '7'
-        self.params['jl'] = city
-        self.params['kw'] = keywords
-        # self.params['p'] = page
+        # zl_params = {
+        #     "pd": "7",  # 发布时间
+        #     "jl": "北京",  # 地区
+        #     "kw": "python",  # 搜索条件
+        #     "sm": "0",
+        #     "p": "1",
+        #     "sf": "0",
+        #     "st": "99999",
+        #     "isadv": "1"
+        # }
+
+        for city in CITY:
+            for keyword in KEYWORDS:
+                self.params['pd'] = self.update_time_code['7d']
+                self.params['jl'] = self.city_code[city]
+                self.params['kw'] = urllib.quote(keyword.encode("utf-8"))
+
+                yield Request(self.baseURL, params=self.params, headers=self.headers, parse="parse_list")
 
     def get_list_response(self, city, keywords, pub_date="7d"):
         # 查询参数
@@ -141,7 +149,6 @@ class Spider(object):
         else:
             return response
 
-
     def get_total_num(self, *args, **kwargs):
         response = self.get_list_response(*args, **kwargs)
         html = etree.HTML(response.content)
@@ -149,254 +156,43 @@ class Spider(object):
         num = html.xpath('//div[@class="main"]//span[@class="search_yx_tj"]//em/text()')
         return int(num[0])
 
-    #获取响应页面     add
-    def getlistresponse(self):
-
-        try:
-            response = requests.get(self.baseURL, params= self.params, headers = self.header, timeout = 2)
-        except Exception, e:
-            print e
-            return self.getlistresponse()
-        else:
-            return response
-
-
     #解析当前页面中的列表链接a[href]    add
-    def parselinklist(self, response):
+    def parse_list(self, response):
         html = etree.HTML(response.content)
-        link_list = html.xpath('//div[@class = "newlist_list_content"]/table/tr/td/div/a/@href')
+        detail_links = html.xpath('//div[@class = "newlist_list_content"]/table/tr/td/div/a/@href')
         # print link_list
         # print len(link_list)
+        for link in detail_links:
+            if link.endswith('.htm'):
+                yield Request(link, headers=self.headers, parse="parse_detail")
 
-        return link_list
-
-
-    #翻页解析提取详情页链接        add
-    def getlinklists(self):
-
-        link_lists = []
-        p = 1
-        while True:
-            response = self.getlistresponse()
-            links = self.parselinklist(response)
-            len1 = len(links)
-            if len(link_lists) <= 61:
-                self.params['p'] = p
-                # print "自加前", p
-                p += 1
-                # print "自加后", p
-                for link in links:
-                    link_lists.append(link)
-                # print "第一次", len(link_lists)
-                # return link_lists
-
-            elif  link_lists[-1] != link_lists[-1-len1]:
-                self.params['p'] = p
-                p += 1
-                # print "2222222", p
-                for link in links:
-                    link_lists.append(link)
-            else:
-                break
-
-        return link_lists[:-len1]
-
-    #获取详情页      add
-    def getdetailsresponse(self, link_lists):
-        i = 1
-        for url in link_lists:
-            if url.endswith('.htm'):
-                response = requests.get(url, headers = self.header)
-                print url
-                print i
-                self.parsedetails(response)
-                i += 1
-
+        next_link = html.xpath("/html/body/div[3]/div[3]/div[3]/form/div[1]/div[1]/div[3]/ul/li[12]/a/@href")
+        if next_link:
+            yield Request(next_link[0], headers=self.headers, parse="parse_list")
 
     #解析详情页      add
-    def parsedetails(self, response):
+    def parse_detail(self, response):
         html = etree.HTML(response.content)
-        print response.content
+        # print response.content
         # 招聘岗位
         position = html.xpath('/html/body/div[5]/div[1]/div[1]/h1/text()')
-        # print position
-        if len(position):
-            position = position[0].strip()
-        else:
-            position = None
         # 公司名称
         company = html.xpath('/html/body/div[5]/div[1]/div[1]/h2/a/text()')
-        # print company
-        if len(company):
-            company = company[0].strip()
-        else:
-            company = None
         # 职位月薪
         salary = html.xpath("/html/body/div[6]/div[1]/ul/li[1]/strong/text()")
-        print salary
-        if len(salary):
-            if salary[0].find('面议') != -1:
-                salary_min = 0
-                salary_max = 0
-            else:
-                salary = salary[0].strip()[:-3].encode("utf-8")
-                salary = salary.split('-')
-                # global salary_min
-                # global salary_max
-                salary_min = int(salary[0])
-                salary_max = int(salary[1])
-                print "salary_min==", salary_min
-                print "salary_max==", salary_max
-        else:
-            salary = None
-
         # 工作地点
-        #workposition = html.xpath("/html/body/div[6]/div[1]/ul/li[2]/strong/a/text()")[0].strip()
-        # print workposition
-        # 发布时间
-        releasedata = html.xpath('//*[@id="span4freshdate"]/text()')
-        # print releasedata
-        if len(releasedata):
-            releasedata = releasedata[0].strip()
-        else:
-            releasedata = None
-        # 工作性质
-        worknature = html.xpath("/html/body/div[6]/div[1]/ul/li[4]/strong/text()")
-        # print worknature
-        if len(worknature):
-            worknature = worknature[0].strip()
-        else:
-            worknature = None
-
-        # 工作经验
-        workbackground = html.xpath("/html/body/div[6]/div[1]/ul/li[5]/strong/text()")
-        # print workbackground
-        if len(workbackground):
-            workbackground = workbackground[0].strip()
-        else:
-            workbackground = None
-
-        # 最低学历
-        education = html.xpath("/html/body/div[6]/div[1]/ul/li[6]/strong/text()")
-        # print education
-        if len(education):
-            education = education[0].strip()
-        else:
-            education = None
-
+        work_location = html.xpath('//div[@class = "tab-inner-cont"]/h2/text()')
         # 招聘人数
         number = html.xpath("/html/body/div[6]/div[1]/ul/li[7]/strong/text()")
-        # print number
-        if len(number):
-            number = int(number[0].strip()[:-1].encode("utf-8"))
-        else:
-            number = None
-
-        # 职位类别
-        positioncategory = html.xpath("/html/body/div[6]/div[1]/ul/li[8]/strong/a/text()")
-        # print positioncategory
-        if len(positioncategory):
-            positioncategory = positioncategory[0].strip()
-        else:
-            positioncategory = None
-
-
         # 任职要求
         jobrequirements = html.xpath('//div[@class = "tab-inner-cont"]/p/text()')
-        # print len(jobrequirements)
-        # print type(jobrequirements)
-        # print "===============",jobrequirements
-        # for i in jobrequirements:
-        #     print i
         if len(jobrequirements):
             jobrequirements = jobrequirements[:-4]
         else:
             jobrequirements = None
 
-
-        # 工作地址
-
-        jobaddress = html.xpath('//div[@class = "tab-inner-cont"]/h2/text()')
-        if len(jobaddress):
-            jobaddress = jobaddress[0].strip()
-        else:
-            jobaddress = None
-        # print "+++++++++++++++",jobaddress
-
-        # 公司规模
-        companysize = html.xpath('/html/body/div[6]/div[2]/div[1]/ul/li[1]/strong/text()')
-        if len(companysize):
-            companysize = companysize[0].strip()
-        else:
-            companysize = None
-        # print "*****************",companysize
-
-        # 公司性质
-        companynature = html.xpath('/html/body/div[6]/div[2]/div[1]/ul/li[2]/strong/text()')
-        if len(companynature):
-            companynature = companynature[0].strip()
-        else:
-            companynature = None
-
-        # print "1111111111111111",companynature
-
-        # 公司行业
-        companyindustry = html.xpath('/html/body/div[6]/div[2]/div[1]/ul/li[3]/strong/a/text()')
-        if len(companyindustry):
-            companyindustry = companyindustry[0].strip()
-        else:
-            companyindustry = None
-
-        # print "2222222222222222222", companyindustry
-
-        # 公司主页链接
         try:
-            companyhome = html.xpath('/html/body/div[6]/div[2]/div[1]/ul/li[4]/strong/a/@href')
-            # print "33333333333333",companyhome
-        except:
-            companyhome = None
-
-
-        # 公司地址
-        companyaddress = html.xpath('/html/body/div[6]/div[2]/div[1]/ul/li[5]/strong/text()')
-        # print "44444444444444", companyaddress
-        if len(companyhome):
-            companyhome = companyhome[0].strip()
-        else:
-            companyhome = None
-
-        try:
-            # 将数据封装为字典形式进行存储
-            # item = {}
-            # item["position"] = position if position else "NULL"
-            # item["company"] = company if company else "NULL"
-            # # item["salary"] = salary if salary else "NULL"
-            # item["salary_min"] = salary_min if salary_min else "NULL"
-            # item["salary_max"] = salary_max if salary_max else "NULL"
-            # # item["workposition"] = workposition if workposition else "NULL"
-            # item["releasedata"] = releasedata if releasedata else "NULL"
-            # item["worknature"] = worknature if worknature else "NULL"
-            # item["workbackground"] = workbackground if workbackground else "NULL"
-            # item["education"] = education if education else "NULL"
-            # item["number"] = number if number else "NULL"
-            # item["positioncategory"] = positioncategory if positioncategory else "NULL"
-            # item["jobrequirements"] = jobrequirements if jobrequirements else "NULL"
-            # item["jobaddress"] = jobaddress if jobaddress else "NULL"
-            # item["companysize"] = companysize if companysize else "NULL"
-            # item["companynature"] = companynature if companynature else "NULL"
-            # item["companyindustry"] = companyindustry if companyindustry else "NULL"
-            # item["companyhome"] = companyhome if companyhome else "NULL"
-            # item["companyaddress"] = companyaddress if companyaddress else "NULL"
-            #
-            # print item
-            #
-            # with open("zhao.json", "w") as f:
-            #     f.write(str(item))
-
-            # 存入Mongo数据库
-            # db = mongo.MongodbHandeler()
-            # db.process_item(item)
-            item = Item(position, company, number, salary_min, salary_max)
+            item = Item(spider=Spider.name,position=position, company=company, number=number, salary=salary, worklocation=work_location, jobrequirements=jobrequirements)
             result = item.data
             print result
 

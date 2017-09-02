@@ -3,7 +3,6 @@
 
 '''
 @author: Francis
-
 @license: (C) Copyright 2017
 @contact: ryomawithlst@sina.com
 @software: PyCharm
@@ -12,11 +11,15 @@
 @desc:
 '''
 
+import urllib
 import json
 from datetime import datetime
+from lxml import etree
 
 import jsonpath
 import requests
+from frame.http.request import Request
+from item.item import Item
 
 from settings import CITY, KEYWORDS
 
@@ -36,11 +39,32 @@ class Spider(object):
     '''
 
     name = 'lg_job'
+    # 拉勾城市
+    lg_job_city_code = {
+        u"北京": u"北京",
+        u"上海": u"上海",
+        u"广州": u"广州",
+        u"深圳": u"深圳",
+        u"武汉": u"武汉",
+        u"成都": u"成都",
+        u"重庆": u"重庆",
+        u"郑州": u"郑州",
+        u"杭州": u"杭州",
+        u"济南": u"济南",
+        u"南京": u"南京",
+        u"西安": u"西安",
+        u"长沙": u"长沙",
+        u"哈尔滨": u"哈尔滨",
+        u"石家庄": u"石家庄",
+        u"合肥": u"合肥",
+        u"太原": u"太原",
+    }
+    city_code = lg_job_city_code
 
-    def __init__(self):
+    def __init__(self, db):
         self.headers = {
             "Accept":"application/json, text/javascript, */*; q=0.01",
-            #"Accept-Encoding":"gzip, deflate, br",
+            # "Accept-Encoding":"gzip, deflate, br",
             "Accept-Language":"zh-CN,zh;q=0.8",
             "Cache-Control":"no-cache",
             "Connection":"keep-alive",
@@ -56,6 +80,10 @@ class Spider(object):
             "X-Anit-Forge-Token":"None",
             "X-Requested-With":"XMLHttpRequest",
         }
+        self.db = db
+        # Ajax的url
+        self.baseurl = "https://www.lagou.com/jobs/positionAjax.json"
+
 
     def get_list_response(self, city, keywords, page):
         '''
@@ -112,11 +140,88 @@ class Spider(object):
                 return False, len(ret)
         return True,
 
+    #add
+    def start_requests(self):
+        # 请求参数
+        lg_params = {
+            "px": "new",
+            "city": "北京",
+            "needAddtionalResult": "false",
+        }
+        lg_data = {
+            "first": "false",
+            "pn": "1",
+            "kd": "python",
+        }
 
-if __name__ == '__main__':
-    lg_job = LagouJobSpider()
-    response = lg_job.get_response(1,2)
-    lg_job.parse(response)
+        for city in CITY:
+            for keyword in KEYWORDS:
+                lg_params['city'] = self.city_code[city]
+                lg_data['kd'] = urllib.quote(keyword.encode("utf-8"))
+
+                yield Request(self.baseurl, meta={"next":int(lg_data["pn"])+1}, method="POST", data=lg_data, params=lg_params, headers=self.headers, parse="parse_list")
 
 
+     # 解析当前页中列表页链接a[href]
+    def parse_list(self, response):
+        lg_data = {
+            "first": "false",
+            "pn": "1",
+            "kd": "python",
+        }
+        # 将json格式的数据转化为python字符串
+        res = json.loads(response.content)
+        # 提取详情页链接中的positionId
+        positionIdlist = jsonpath.jsonpath(res, "$..positionId")
+        # 详情页url模板
+        origin_url = "https://www.lagou.com/jobs/{positionId}.html"
+        # 组装url
+        index = 15
+        result = self.judgeDays(response)
+        if result[0]:
+            lg_data['pn'] = str(response.meta['next'])
+            yield Request(response.url, data=lg_data, headers=self.headers, parse="parse_list")
+        else:
+            index = result[1]
 
+        for id in positionIdlist[:index]:
+            url = origin_url.format(positionId=id)
+            yield Request(url, headers=self.headers, parse="parse_detail")
+
+    # 解析详情页
+    def parse_detail(self, response):
+        html = etree.HTML(response.content)
+        # print type(html)
+        # 招聘岗位
+        position = html.xpath('/html/body/div[2]/div/div[1]/div/span/text()')
+        # 公司名称
+        company = html.xpath('//*[@id="job_company"]/dt/a/div/h2/text()')
+        # 职位月薪
+        salary = html.xpath("/html/body/div[2]/div/div[1]/dd/p[1]/span[1]/text()")
+        # 招聘人数
+        number = 1
+        # 工作地点
+        workposition1 = html.xpath("//*[@id='job_detail']/dd[3]/div[1]/a/text()")
+        if len(workposition1):
+            workposition1 = workposition1[:-1]
+            workposition1 = ''.join(workposition1)
+        workposition2 = html.xpath("//*[@id='job_detail']/dd[3]/div[1]/text()")
+        if len(workposition2):
+            workposition2 = ''.join(workposition2)
+            workposition2 = workposition2.split('-')
+            workposition2 = ''.join(workposition2).strip()
+        work_location = workposition1 + workposition2
+        # 任职要求
+        jobrequirements = html.xpath('//*[@id="job_detail"]/dd[2]/div/p/text()')
+        if len(jobrequirements):
+            jobrequirements_str = ''.join(jobrequirements).strip()
+        else:
+            jobrequirements_str = None
+
+        try:
+            item = Item(spider=Spider.name, position=position, company=company, salary=salary, number=number, worklocation=work_location, jobrequirements=jobrequirements_str)
+            result = item.data
+            print result
+        except Exception, e:
+            print "[ERR]: 拉勾数据提取失败....",
+            print e
