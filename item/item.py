@@ -68,25 +68,23 @@ class Item(object):
     #
     def _gen_item(self):
         item = {}
-        item["position"] = self._position if self._position else "NULL"
-        item["company"] = self._company if self._company else "NULL"
-        item["number"] = self._number if self._number else "NULL"
-        # item["salary"] = salary if salary else "NULL"
+        item["position"] = self.filter(self._position)
+        item["company"] = self.filter(self._company)
+        item["number"] = self.filter(self._number)
         item["salary_min"], item["salary_max"] = self.filter_salary(self._salary)
-        # item["workposition"] = workposition if workposition else "NULL"
-        item["releasedata"] = self._releasedata if self._releasedata else "NULL"
-        item["worknature"] = self._worknature if self._worknature else "NULL"
-        item["workbackground"] = self._workbackground if self._workbackground else "NULL"
-        item["education"] = self._education if self._education else "NULL"
-        item["positioncategory"] = self._positioncategory if self._positioncategory else "NULL"
-        item["jobrequirements"] = self._jobrequirements if self._jobrequirements else "NULL"
-        item["jobaddress"] = self._jobaddress if self._jobaddress else "NULL"
-        item["companysize"] = self._companysize if self._companysize else "NULL"
-        item["companynature"] = self._companynature if self._companynature else "NULL"
-        item["companyindustry"] = self._companyindustry if self._companyindustry else "NULL"
-        item["companyhome"] = self._companyhome if self._companyhome else "NULL"
-        item["companyaddress"] = self._companyaddress if self._companyaddress else "NULL"
-
+        item["work_location"] = self.filter(self._work)
+        item["pub_date"] = self.filter(self._releasedata)
+        #item["worknature"] = self.filter(self._worknature)
+        item["work_background"] = self.filter(self._workbackground)
+        item["education"] = self.filter(self._education)
+        item["position_category"] = self._positioncategory if self._positioncategory else None
+        item["jobrequirements"] = self.filter(self._jobrequirements)
+        item["work_location"] = self.filter(self._jobaddress)
+        item["company_size"] = self.filter(self._companysize)
+        item["companynature"] = self.filter(self._companynature)
+        item["industry"] = self.filter(self._companyindustry)
+        item["homepage"] = self.filter(self._companyhome)
+        item["address"] = self.filter(self._companyaddress)
         return item
 
 
@@ -95,6 +93,8 @@ class Item(object):
     def data(self):
         return self._gen_item()
 
+    def filter(self, temp, index=0, replace=None):
+        return temp[index].strip() if temp else replace
 
     def filter_salary(self, salary):
         salary_min = 0

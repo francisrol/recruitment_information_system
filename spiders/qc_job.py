@@ -130,26 +130,20 @@ class Spider(object):
     def parse_detail(self, response):
         html = etree.HTML(response.content)
         # 招聘岗位
-        position = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/h1/text()')
-        position = self.filter(position)
+        position_name = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/h1/text()')
         # 公司名称
-        company = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[1]/a/text()')
-        company = self.filter(company)
+        company_name = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[1]/a/text()')
         # 职位月薪
         salary = html.xpath("/html/body/div[2]/div[2]/div[2]/div/div[1]/strong/text()")
-        salary = Item.filter_salary(salary)
         # 工作地点
         # workposition = html.xpath("//div[@class = 'bmsg inbox']/p/text()")[0].strip()
-        workposition = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
-        workposition = self.filterfirst(workposition)
+        work_location = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
+        work_location = self.filterfirst(work_location)
         # 工作经验   最低学历 招聘人数 发布时间 英语 专业
-        re = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
-        workbackground, education, number, releasedata = self.dealresp(re)
-        # 工作性质
-        worknature = None
+        requirements_info = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
+        work_background, education, number, pub_data = self.handle_requirements_info(requirements_info)
         # 职位类别
         positioncategory = html.xpath("//div[@class = 'mt10']/p/span[@class = 'el']/text()")
-        positioncategory = self.dealerror(positioncategory)
         # 任职要求
         try:
             jobrequirements = html.xpath('/html/body/div[2]/div[2]/div[3]/div[4]/div/text()')
@@ -176,9 +170,6 @@ class Spider(object):
             print e
             raise
 
-    def filter(self, temp, replace=None):
-        return temp[0].strip() if temp else replace
-
     def filterfirst(self, temp, replace=None):
         return temp[1].strip() if temp else replace
 
@@ -188,7 +179,7 @@ class Spider(object):
         else:
             return replace
 
-    def dealresp(self, temp, replace = None):
+    def handle_requirements_info(self, temp, replace = None):
         if len(temp):
             res = "".join(temp).strip()
             print "信息：", res

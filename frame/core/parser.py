@@ -30,7 +30,6 @@ class Parser(object):
     def run(self, taskqueue):
         print("run one parser")
         task = taskqueue.get()
-
         try:
             response = self.taskmanager.get_response_obj(task)
             parse = self.taskmanager.get_parse_func(task)
