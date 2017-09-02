@@ -22,15 +22,17 @@
 '''
 position        招聘岗位
 company         公司名称
+number          招聘人数
 salary_min      最低薪资
 salary_max      最高薪资
+worklocation    工作地点
+jobrequirements 任职要求
+
 releasedata     发布时间
 worknature      工作性质
 workbackground  工作经验
 education       最低学历
-number          招聘人数
 positioncategory职位类别
-jobrequirements 任职要求
 jobaddress      工作地址
 companysize     公司规模
 companynature   工作性质
@@ -91,6 +93,8 @@ class Item(object):
             return temp[1].strip() if temp else replace
         elif self._spider == "zl_job":
             return temp[0].strip() if temp else replace
+        elif self._spider == "lg_job":
+            return temp[0].strip() if temp else replace
 
     def filter_salary(self, salary):
         salary_min = 0
@@ -127,12 +131,9 @@ class Item(object):
                     salary_str = self._salary[:salary_index4-1]
                     salary_min = salary_str
                     salary_max = salary_min
-
             else:
                 salary_min = 0
                 salary_max = 0
-
-
         elif self._spider == "zl_job":
             if len(salary):
                 if salary[0].find('面议') != -1:
@@ -150,9 +151,17 @@ class Item(object):
             else:
                 salary_min = 0
                 salary_max = 0
+        elif self._spider == "lg_job":
+            if len(salary):
+                salary = salary.replace("k", "000")
+                salary_list = salary.split("-")
+                salary_min = int(salary_list[0])
+                salary_max = int(salary_list[1])
+            else:
+                salary_min = 0
+                salary_max = 0
 
         return salary_min, salary_max
-
 
     def filter_number(self, number):
         if self._spider == "qc_job":
@@ -175,10 +184,10 @@ class Item(object):
                 number = int(number[0].strip()[:-1].encode("utf-8"))
             else:
                 number = None
+        elif self._spider == "lg_job":
+            number = 1
 
         return number
-
-
 
     def handle_requirements_info(self, temp, replace = None):
         if len(temp):

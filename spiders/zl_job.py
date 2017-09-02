@@ -15,6 +15,7 @@
 import urllib
 import requests
 from lxml import etree
+
 # from database.mongodb import resultdb
 from item.item import *
 from frame.http.request import Request
@@ -98,32 +99,29 @@ class Spider(object):
         self.db = db
         self.baseURL = "http://sou.zhaopin.com/jobs/searchresult.ashx"
 
-
-
     #发送requests请求
     def start_requests(self):
         #add
 
         # 请求参数  add
-        zl_params = {
-            "pd": "7",  # 发布时间
-            "jl": "北京",  # 地区
-            "kw": "python",  # 搜索条件
-            "sm": "0",
-            "p": "1",
-            "sf": "0",
-            "st": "99999",
-            "isadv": "1"
-        }
+        # zl_params = {
+        #     "pd": "7",  # 发布时间
+        #     "jl": "北京",  # 地区
+        #     "kw": "python",  # 搜索条件
+        #     "sm": "0",
+        #     "p": "1",
+        #     "sf": "0",
+        #     "st": "99999",
+        #     "isadv": "1"
+        # }
 
         for city in CITY:
             for keyword in KEYWORDS:
-                zl_params['pd'] = self.update_time_code['7d']
-                zl_params['jl'] = self.city_code[city]
-                zl_params['kw'] = urllib.quote(keyword.encode("utf-8"))
+                self.params['pd'] = self.update_time_code['7d']
+                self.params['jl'] = self.city_code[city]
+                self.params['kw'] = urllib.quote(keyword.encode("utf-8"))
 
-                yield Request(self.baseURL, headers=self.headers, parse="parse_list")
-
+                yield Request(self.baseURL, params=self.params, headers=self.headers, parse="parse_list")
 
     def get_list_response(self, city, keywords, pub_date="7d"):
         # 查询参数
@@ -151,25 +149,12 @@ class Spider(object):
         else:
             return response
 
-
     def get_total_num(self, *args, **kwargs):
         response = self.get_list_response(*args, **kwargs)
         html = etree.HTML(response.content)
         # 提取总数
         num = html.xpath('//div[@class="main"]//span[@class="search_yx_tj"]//em/text()')
         return int(num[0])
-
-    #获取响应页面     add
-    def getlistresponse(self):
-
-        try:
-            response = requests.get(self.baseURL, params= self.params, headers = self.header, timeout = 2)
-        except Exception, e:
-            print e
-            return self.getlistresponse()
-        else:
-            return response
-
 
     #解析当前页面中的列表链接a[href]    add
     def parse_list(self, response):
