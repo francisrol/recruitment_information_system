@@ -95,6 +95,8 @@ REDIS_CONFIG = {
 }
 
 SPIDERS = [
+    # 'qc_job_list',
     'qc_job',
-    #'zl_job'
+    # 'zl_job_list',
+    #'zl_job',
 ]

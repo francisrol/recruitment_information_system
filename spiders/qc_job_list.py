@@ -17,7 +17,7 @@ import urllib
 from frame.http.request import Request
 from lxml import etree
 
-from recruitment_information_system.settings import CITY, KEYWORDS
+from settings import CITY, KEYWORDS
 
 
 class Spider(object):

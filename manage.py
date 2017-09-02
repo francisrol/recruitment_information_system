@@ -14,6 +14,5 @@
 
 from frame.core.schedule.run_with_thread import RunByThread
 
-
 RunByThread().start("test")
 
