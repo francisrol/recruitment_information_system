@@ -43,8 +43,8 @@ companyaddress  公司地址
 class Item(object):
     def __init__(
             self, spider = None, position = None, company = None, number = None, salary = None,
-            releasedata = None,worknature = None, workbackground = None, education = None,
-            positioncategory = None,jobrequirements = None,  jobaddress = None, companysize = None,
+            worklocation=None,jobrequirements=None, releasedata = None,worknature = None,
+            workbackground = None, education = None,positioncategory = None,  jobaddress = None, companysize = None,
             companynature = None,companyindustry = None, companyhome = None, companyaddress = None
     ):
         self._spider = spider
@@ -52,12 +52,15 @@ class Item(object):
         self._company = company
         self._number = number
         self._salary = salary
+        self._worklocation = worklocation
+        self._jobrequirements = jobrequirements
+
+        #暂时不用
         self._releasedata = releasedata
         self._worknature = worknature
         self._workbackground = workbackground
         self._education = education
         self._positioncategory = positioncategory
-        self._jobrequirements = jobrequirements
         self._jobaddress = jobaddress
         self._companysize = companysize
         self._companynature = companynature
@@ -68,23 +71,13 @@ class Item(object):
     #
     def _gen_item(self):
         item = {}
-        item["position"] = self.filter(self._position)
-        item["company"] = self.filter(self._company)
-        item["number"] = self.filter(self._number)
+        item["position_name"] = self.filter(self._position)
+        item["company_name"] = self.filter(self._company)
+        item["number"] = self.filter_number(self._number)
         item["salary_min"], item["salary_max"] = self.filter_salary(self._salary)
-        item["work_location"] = self.filter(self._work)
-        item["pub_date"] = self.filter(self._releasedata)
-        #item["worknature"] = self.filter(self._worknature)
-        item["work_background"] = self.filter(self._workbackground)
-        item["education"] = self.filter(self._education)
-        item["position_category"] = self._positioncategory if self._positioncategory else None
-        item["jobrequirements"] = self.filter(self._jobrequirements)
-        item["work_location"] = self.filter(self._jobaddress)
-        item["company_size"] = self.filter(self._companysize)
-        item["companynature"] = self.filter(self._companynature)
-        item["industry"] = self.filter(self._companyindustry)
-        item["homepage"] = self.filter(self._companyhome)
-        item["address"] = self.filter(self._companyaddress)
+        item["work_location"] = self.filter(self._workloction)
+        item["job_requirements"] = self._jobrequirements()
+
         return item
 
 
@@ -93,8 +86,11 @@ class Item(object):
     def data(self):
         return self._gen_item()
 
-    def filter(self, temp, index=0, replace=None):
-        return temp[index].strip() if temp else replace
+    def filter(self, temp, replace=None):
+        if self._spider == "qc_job":
+            return temp[1].strip() if temp else replace
+        elif self._spider == "zl_job":
+            return temp[0].strip() if temp else replace
 
     def filter_salary(self, salary):
         salary_min = 0
@@ -138,11 +134,114 @@ class Item(object):
 
 
         elif self._spider == "zl_job":
-            pass
+            if len(salary):
+                if salary[0].find('面议') != -1:
+                    salary_min = 0
+                    salary_max = 0
+                else:
+                    salary = salary[0].strip()[:-3].encode("utf-8")
+                    salary = salary.split('-')
+                    # global salary_min
+                    # global salary_max
+                    salary_min = int(salary[0])
+                    salary_max = int(salary[1])
+                    print "salary_min==", salary_min
+                    print "salary_max==", salary_max
+            else:
+                salary_min = 0
+                salary_max = 0
 
         return salary_min, salary_max
 
 
+    def filter_number(self, number):
+        if self._spider == "qc_job":
+            if len(number):
+                res = "".join(number).strip()
+                # 找招聘人数
+                index3 = res.find("聘")
+                # 招聘人数
+                if index3 != -1:
+                    if res.find("若干") != -1:
+                        number = 1
+                        # print "number--", number
+                    else:
+                        number = res[index3 + 1:index3 + 2]
+                        # print "number++", number
+                else:
+                    number = None
+        elif self._spider == "zl_job":
+            if len(number):
+                number = int(number[0].strip()[:-1].encode("utf-8"))
+            else:
+                number = None
+
+        return number
+
+
+
+    def handle_requirements_info(self, temp, replace = None):
+        if len(temp):
+            res = "".join(temp).strip()
+            print "信息：", res
+            # 找工作经验
+            index = res.find("经验")
+            # 找本科
+            index1 = res.find("科")
+            # 找大专
+            index11 = res.find("专")
+            # 找硕士或是博士
+            index2 = res.find("士")
+            # 找招聘人数
+            index3 = res.find("聘")
+            # 找发布时间
+            index4 = res.find("发布")
+
+            # 工作经验
+            if index != -1:
+                workbackground = res[:index]
+                # print "workbackground--", workbackground
+            else:
+                workbackground = None
+                # print "workbackground--", workbackground
+
+            # 专科或是本科  硕士或是博士
+            if index1 != -1:
+                education = res[index1 - 1:index1 + 1]
+                # print "education--", education
+            elif index2 != -1:
+                education = res[index2 - 1:index2 + 1]
+                # print "education++", education
+            elif index11 != -1:
+                education = res[index11 - 1:index11 + 1]
+                # print "education11", education
+            else:
+                education = None
+                # print "education==", education
+
+            # 招聘人数
+            if index3 != -1:
+                if res.find("若干") != -1:
+                    number = 1
+                    # print "number--", number
+                else:
+                    number = res[index3 + 1:index3 + 2]
+                    # print "number++", number
+            else:
+                number = None
+                # print "number==", number
+
+            # 发布时间
+            if index4 != -1:
+                releasedata = res[index4 - 5:index4]
+                # print "releasedata--", releasedata
+            else:
+                releasedata = None
+                # print "releasedata++", releasedata
+        else:
+            return replace
+
+        return number
 
 
 

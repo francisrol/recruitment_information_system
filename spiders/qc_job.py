@@ -135,15 +135,11 @@ class Spider(object):
         company_name = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[1]/a/text()')
         # 职位月薪
         salary = html.xpath("/html/body/div[2]/div[2]/div[2]/div/div[1]/strong/text()")
-        # 工作地点
-        # workposition = html.xpath("//div[@class = 'bmsg inbox']/p/text()")[0].strip()
+        # 工作经验   最低学历 招聘人数 发布时间 英语 专业 ---提取招聘人数
+        result = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
+        # 上班地址
         work_location = html.xpath("/html/body/div[2]/div[2]/div[3]/div[5]/div/p/text()")[1].strip()
-        work_location = self.filterfirst(work_location)
-        # 工作经验   最低学历 招聘人数 发布时间 英语 专业
-        requirements_info = html.xpath('/html/body/div[2]/div[2]/div[3]/div[1]/div/div/span/text()')
-        work_background, education, number, pub_data = self.handle_requirements_info(requirements_info)
-        # 职位类别
-        positioncategory = html.xpath("//div[@class = 'mt10']/p/span[@class = 'el']/text()")
+        # work_location = self.filterfirst(work_location)
         # 任职要求
         try:
             jobrequirements = html.xpath('/html/body/div[2]/div[2]/div[3]/div[4]/div/text()')
@@ -151,17 +147,8 @@ class Spider(object):
             jobrequirements = "无"
         jobrequirements_str = ''.join(jobrequirements).strip()
 
-        # 工作地址
-        jobaddress = workposition
-        # print "+++++++++++++++",jobaddress
-
-        # 公司信息
-        info = html.xpath('/html/body/div[2]/div[2]/div[2]/div/div[1]/p[2]/text()')[0].strip()
-        companynature, companysize,companyindustry = self.dealinfo(info)
-        # 公司行业
-
         try:
-            item = Item(Spider.name, position, company, number, salary)
+            item = Item(spider=Spider.name, position=position_name, company=company_name, salary=salary, number=result, worklocation=work_location, jobrequirements=jobrequirements_str)
             result = item.data
             print result
 
@@ -170,98 +157,93 @@ class Spider(object):
             print e
             raise
 
-    def filterfirst(self, temp, replace=None):
-        return temp[1].strip() if temp else replace
-
-    def dealerror(self, temp, replace=None):
-        if temp:
-            return temp
-        else:
-            return replace
-
-    def handle_requirements_info(self, temp, replace = None):
-        if len(temp):
-            res = "".join(temp).strip()
-            print "信息：", res
-            # 找工作经验
-            index = res.find("经验")
-            # 找本科
-            index1 = res.find("科")
-            # 找大专
-            index11 = res.find("专")
-            # 找硕士或是博士
-            index2 = res.find("士")
-            # 找招聘人数
-            index3 = res.find("聘")
-            # 找发布时间
-            index4 = res.find("发布")
-
-            # 工作经验
-            if index != -1:
-                workbackground = res[:index]
-                # print "workbackground--", workbackground
-            else:
-                workbackground = None
-                # print "workbackground--", workbackground
-
-            # 专科或是本科  硕士或是博士
-            if index1 != -1:
-                education = res[index1 - 1:index1 + 1]
-                # print "education--", education
-            elif index2 != -1:
-                education = res[index2 - 1:index2 + 1]
-                # print "education++", education
-            elif index11 != -1:
-                education = res[index11 - 1:index11 + 1]
-                # print "education11", education
-            else:
-                education = None
-                # print "education==", education
-
-            # 招聘人数
-            if index3 != -1:
-                if res.find("若干") != -1:
-                    number = 1
-                    # print "number--", number
-                else:
-                    number = res[index3 + 1:index3 + 2]
-                    # print "number++", number
-            else:
-                number = None
-                # print "number==", number
-
-            # 发布时间
-            if index4 != -1:
-                releasedata = res[index4 - 5:index4]
-                # print "releasedata--", releasedata
-            else:
-                releasedata = None
-                # print "releasedata++", releasedata
-        else:
-            return replace
-
-        return workbackground, education, number, releasedata
-
-    def dealinfo(self, info, replace = None):
-        if len(info):
-            info_list = info.split('|')
-
-            # 公司性质
-            companynature = info_list[0].strip()
-
-            # 公司规模
-            companysize = info_list[1].strip()
-
-            companyindustry = info_list[2].strip()
-
-        else:
-            companynature = None
-            companysize = None
-            companyindustry = None
-            return companynature,companysize,companyindustry
-        return companynature, companysize,companyindustry
-
-
+    # def dealerror(self, temp, replace=None):
+    #     if temp:
+    #         return temp
+    #     else:
+    #         return replace
+    #
+    # def handle_requirements_info(self, temp, replace = None):
+    #     if len(temp):
+    #         res = "".join(temp).strip()
+    #         print "信息：", res
+    #         # 找工作经验
+    #         index = res.find("经验")
+    #         # 找本科
+    #         index1 = res.find("科")
+    #         # 找大专
+    #         index11 = res.find("专")
+    #         # 找硕士或是博士
+    #         index2 = res.find("士")
+    #         # 找招聘人数
+    #         index3 = res.find("聘")
+    #         # 找发布时间
+    #         index4 = res.find("发布")
+    #
+    #         # 工作经验
+    #         if index != -1:
+    #             workbackground = res[:index]
+    #             # print "workbackground--", workbackground
+    #         else:
+    #             workbackground = None
+    #             # print "workbackground--", workbackground
+    #
+    #         # 专科或是本科  硕士或是博士
+    #         if index1 != -1:
+    #             education = res[index1 - 1:index1 + 1]
+    #             # print "education--", education
+    #         elif index2 != -1:
+    #             education = res[index2 - 1:index2 + 1]
+    #             # print "education++", education
+    #         elif index11 != -1:
+    #             education = res[index11 - 1:index11 + 1]
+    #             # print "education11", education
+    #         else:
+    #             education = None
+    #             # print "education==", education
+    #
+    #         # 招聘人数
+    #         if index3 != -1:
+    #             if res.find("若干") != -1:
+    #                 number = 1
+    #                 # print "number--", number
+    #             else:
+    #                 number = res[index3 + 1:index3 + 2]
+    #                 # print "number++", number
+    #         else:
+    #             number = None
+    #             # print "number==", number
+    #
+    #         # 发布时间
+    #         if index4 != -1:
+    #             releasedata = res[index4 - 5:index4]
+    #             # print "releasedata--", releasedata
+    #         else:
+    #             releasedata = None
+    #             # print "releasedata++", releasedata
+    #     else:
+    #         return replace
+    #
+    #     return number
+    #
+    # def dealinfo(self, info, replace = None):
+    #     if len(info):
+    #         info_list = info.split('|')
+    #
+    #         # 公司性质
+    #         companynature = info_list[0].strip()
+    #
+    #         # 公司规模
+    #         companysize = info_list[1].strip()
+    #
+    #         companyindustry = info_list[2].strip()
+    #
+    #     else:
+    #         companynature = None
+    #         companysize = None
+    #         companyindustry = None
+    #         return companynature,companysize,companyindustry
+    #     return companynature, companysize,companyindustry
 
 if __name__ == '__main__':
     pass
