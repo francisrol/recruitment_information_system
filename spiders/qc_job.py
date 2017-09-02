@@ -18,8 +18,8 @@ from lxml import etree
 from item.item import *
 
 
-from http.request import Request
-from init.settings import CITY, KEYWORDS
+from frame.http.request import Request
+from settings import CITY, KEYWORDS
 
 class Spider(object):
     '''
@@ -273,35 +273,6 @@ class Spider(object):
             companyindustry = None
 
         try:
-            # item = {}
-            # item["position"] = position if position else "NULL"
-            # item["company"] = company if company else "NULL"
-            # # item["salary"] = salary if salary else "NULL"
-            # item["salary_min"] = salary_min if salary_min else "NULL"
-            # item["salary_max"] = salary_max if salary_max else "NULL"
-            # item["workposition"] = workposition if workposition else "NULL"
-            # item["releasedata"] = releasedata if releasedata else "NULL"
-            # item["worknature"] = worknature if worknature else "NULL"
-            # item["workbackground"] = workbackground if workbackground else "NULL"
-            # item["education"] = education if education else "NULL"
-            # item["number"] = number if number else "NULL"
-            # item["positioncategory"] = positioncategory if positioncategory else "NULL"
-            # item["jobrequirements"] = jobrequirements_str if jobrequirements_str else "NULL"
-            # item["jobaddress"] = jobaddress if jobaddress else "NULL"
-            # item["companysize"] = companysize if companysize else "NULL"
-            # item["companynature"] = companynature if companynature else "NULL"
-            # item["companyindustry"] = companyindustry if companyindustry else "NULL"
-
-            # print item
-            # print type(item)
-
-            # with open("QC.json", "wa") as f:
-            #     f.write(str(item))
-                # f.write(item)
-
-            # 存入Mongo数据库
-            # db = mongo.MongodbHandeler()
-            # db.process_item(item)
             item = Item(position, company, number, salary_min, salary_max)
             result = item.data
             print result

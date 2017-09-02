@@ -16,6 +16,7 @@ import requests
 from lxml import etree
 # from database.mongodb import resultdb
 from item.item import *
+from frame.http.request import Request
 
 
 class Spider(object):
