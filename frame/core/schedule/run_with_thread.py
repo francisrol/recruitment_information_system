@@ -11,8 +11,8 @@
 @time: 17/9/1 17:56
 @desc:
 '''
-from . import Schedule
 
+from . import Schedule
 from frame.core.queue_manager import QueueManager
 from frame.database.redis.taskdb import TaskDB
 from frame.core.task_manager import TaskManager
@@ -82,7 +82,7 @@ class RunByThread(object):
                 )
                 threads.append(fetcher_task_thread)
                 threads.append(parser_task_thread)
-                print("任务输入队列管理线程启动成功")
+                print("任务输出队列管理线程启动成功")
             if cmd == '6':
                 schedule.quit()
                 for t in threads:
